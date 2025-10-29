@@ -1,0 +1,1625 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dasbor Interaktif: Script MongoDB Dasar</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Chosen Palette: Warm Neutral Harmony -->
+    <!-- Application Structure Plan: Struktur aplikasi dirancang sebagai SPA dua panel (sidebar navigasi tetap di desktop, panel konten yang dapat digulir) untuk mengubah laporan skrip linier menjadi "cheatsheet" interaktif. Arsitektur ini memprioritaskan 'findability' (kemudahan menemukan). Interaksi utama meliputi: 1) Navigasi sidebar yang dapat difilter yang menggulir panel konten ke bagian yang relevan. 2) Bilah pencarian tunggal yang secara bersamaan memfilter navigasi DAN menyorot teks yang cocok di panel konten. 3) Tombol "Salin" untuk setiap blok kode. Struktur ini dipilih karena secara fundamental meningkatkan kegunaan konten (skrip kode) bagi pengembang yang mencari referensi cepat. -->
+    <!-- Visualization & Content Choices: Konten sumber (skrip kode) tidak mengandung data kuantitatif, sehingga visualisasi data (Chart.js/Plotly) tidak relevan dan tidak digunakan. Fokus dialihkan ke interaktivitas UI. 1) Info: Judul Laporan -> Goal: Inform -> Presentation: <h1>. 2) Info: Hierarki Bagian -> Goal: Organize/Navigate -> Presentation: Daftar navigasi HTML bertingkat di sidebar dan tag <section>/<h2>/<h3> di konten. -> Interaction: Klik tautan sidebar menggulir konten (JS scrollIntoView). 3) Info: Skrip Kode -> Goal: Inform/Utility -> Presentation: Blok <pre><code> yang ditata. -> Interaction: Tombol "Salin" (JS execCommand) untuk setiap blok. 4) Info: Semua Teks -> Goal: Find -> Presentation: Teks dalam elemen HTML standar. -> Interaction: Bilah pencarian (JS) memfilter sidebar dan membungkus kecocokan konten dalam tag <mark> (penyorotan). -->
+    <!-- CONFIRMATION: NO SVG graphics used. NO Mermaid JS used. -->
+
+    <style>
+        body {
+            font-family: 'Inter', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol", "Noto Color Emoji";
+        }
+        .highlight {
+            background-color: #fef08a; /* Tailwind yellow-200 */
+            color: #1f2937; /* Tailwind gray-800 */
+            border-radius: 2px;
+            padding: 0 2px;
+        }
+        /* Scrollbar kustom yang tipis */
+        ::-webkit-scrollbar {
+            width: 8px;
+            height: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f5f9; /* gray-100 */
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #94a3b8; /* gray-400 */
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #64748b; /* gray-500 */
+        }
+    </style>
+</head>
+<body class="bg-gray-50 text-gray-800 flex flex-col h-screen overflow-hidden">
+
+    <!-- Header -->
+    <header class="bg-white shadow-md sticky top-0 z-30 w-full">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="flex justify-between items-center h-16">
+                <h1 class="text-2xl font-bold text-indigo-600">Dasbor Script MongoDB</h1>
+                <button id="menu-toggle" class="md:hidden p-2 rounded-md text-gray-600 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-500">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"></path></svg>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <div class="flex-1 flex overflow-hidden">
+        
+        <!-- Sidebar -->
+        <aside id="sidebar" class="fixed top-16 left-0 w-72 h-[calc(100vh-64px)] bg-white shadow-lg p-6 overflow-y-auto transform -translate-x-full md:relative md:top-0 md:translate-x-0 md:w-1/3 lg:w-1/4 md:h-full transition-transform duration-300 ease-in-out z-20">
+            <div class="sticky top-0 bg-white pt-2 -mt-2 pb-4">
+                <input id="search-input" type="text" placeholder="Cari skrip..." class="w-full px-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-indigo-500">
+            </div>
+            
+            <nav>
+                <ul id="nav-list" class="space-y-2">
+                    <li>
+                        <a href="#" data-target="sec-db-collection" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Database dan Collection</a>
+                        <ul class="pl-4 mt-1 space-y-1">
+                            <li><a href="#" data-target="sec-database-js" class="nav-link-l2 text-gray-600 hover:text-indigo-500">database.js</a></li>
+                            <li><a href="#" data-target="sec-collection-js" class="nav-link-l2 text-gray-600 hover:text-indigo-500">collection.js</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-insert-doc" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Insert Document</a>
+                        <ul class="pl-4 mt-1 space-y-1">
+                            <li><a href="#" data-target="sec-customers-js" class="nav-link-l2 text-gray-600 hover:text-indigo-500">customers.js</a></li>
+                            <li><a href="#" data-target="sec-products-js" class="nav-link-l2 text-gray-600 hover:text-indigo-500">products.js</a></li>
+                            <li><a href="#" data-target="sec-orders-js" class="nav-link-l2 text-gray-600 hover:text-indigo-500">orders.js</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-query-doc" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Query Document</a>
+                        <ul class="pl-4 mt-1 space-y-1">
+                            <li><a href="#" data-target="sec-query-js" class="nav-link-l2 text-gray-600 hover:text-indigo-500">query.js</a></li>
+                            <li><a href="#" data-target="sec-data-tambahan-query" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Data Tambahan</a></li>
+                            <li><a href="#" data-target="sec-comparison-query" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Comparison Operator</a></li>
+                            <li><a href="#" data-target="sec-logical-query" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Logical Operator</a></li>
+                            <li><a href="#" data-target="sec-element-query" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Element Operator</a></li>
+                            <li><a href="#" data-target="sec-evaluation-query" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Evaluation Operator</a></li>
+                            <li><a href="#" data-target="sec-array-query" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Array Operator</a></li>
+                            <li><a href="#" data-target="sec-projection-op" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Projection Operator</a></li>
+                            <li><a href="#" data-target="sec-query-modifier" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Query Modifier</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-update-doc" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Update Document</a>
+                        <ul class="pl-4 mt-1 space-y-1">
+                            <li><a href="#" data-target="sec-update-replace" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Update/Replace</a></li>
+                            <li><a href="#" data-target="sec-field-update" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Field Update Operator</a></li>
+                            <li><a href="#" data-target="sec-array-update" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Array Update Operator</a></li>
+                            <li><a href="#" data-target="sec-array-update-mod" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Array Update Modifier</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-delete-doc" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Delete Document</a>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-bulk-write" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Bulk Write Operation</a>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-indexes" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Indexes</a>
+                        <ul class="pl-4 mt-1 space-y-1">
+                            <li><a href="#" data-target="sec-single-compound-idx" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Single & Compound</a></li>
+                            <li><a href="#" data-target="sec-text-idx" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Text Index</a></li>
+                            <li><a href="#" data-target="sec-wildcard-idx" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Wildcard Index</a></li>
+                            <li><a href="#" data-target="sec-index-props" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Index Properties</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-security" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Security</a>
+                        <ul class="pl-4 mt-1 space-y-1">
+                            <li><a href="#" data-target="sec-admin-user" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Admin User</a></li>
+                            <li><a href="#" data-target="sec-user-mgmt" class="nav-link-l2 text-gray-600 hover:text-indigo-500">User Management</a></li>
+                            <li><a href="#" data-target="sec-role-mgmt" class="nav-link-l2 text-gray-600 hover:text-indigo-500">Role Management</a></li>
+                        </ul>
+                    </li>
+                    <li>
+                        <a href="#" data-target="sec-backup-restore" class="nav-link-l1 font-semibold text-gray-700 hover:text-indigo-600">Backup & Restore (Bash)</a>
+                    </li>
+                </ul>
+            </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <main id="content" class="flex-1 overflow-y-auto p-6 md:p-10">
+            <div class="max-w-4xl mx-auto">
+
+                <section id="sec-db-collection" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Database dan Collection</h2>
+                    <p class="mb-6 text-gray-600">Bagian ini mencakup perintah dasar untuk mengelola database dan collection. Anda akan belajar cara beralih antar database, melihat semua database, dan membuat collection baru untuk menyimpan dokumen Anda.</p>
+                    
+                    <div id="sec-database-js" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">database.js</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// memilih database
+use belajar // memilih database belajar
+
+use hello // memilih database hello
+
+show databases // menampilkan semua databases
+</code></pre>
+                        </div>
+                    </div>
+                    
+                    <div id="sec-collection-js" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">collection.js</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// Buatlah beberapa collection
+db.createCollection("customers") // membuat collection customers
+db.createCollection("products") // membuat collection products
+db.createCollection("orders") // membuat collection orders
+</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="sec-insert-doc" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Insert Document</h2>
+                    <p class="mb-6 text-gray-600">Setelah collection dibuat, langkah selanjutnya adalah menyisipkan data. Bagian ini menunjukkan cara menyisipkan satu dokumen (`insertOne`) atau beberapa dokumen sekaligus (`insertMany`) ke dalam collection Anda.</p>
+                    
+                    <div id="sec-customers-js" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">customers.js</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// insert customers document
+db.customers.insertOne({
+  _id: "khannedy",
+  name: "Eko Kurniawan Khannedy"
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-products-js" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">products.js</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// insert product documents
+db.products.insertMany([
+  {
+    _id: 1,
+    name: "Indomie Ayam Bawang",
+    price: new NumberLong("2000")
+  },
+  {
+    _id: 2,
+    name: "Mie Sedap Soto",
+    price: new NumberLong("2000")
+  }
+]);
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-orders-js" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">orders.js</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// insert orders document
+db.orders.insertOne({
+  _id: new ObjectId(),
+  total: new NumberLong("8000"),
+  items: [
+    {
+      product_id: 1,
+      price: new NumberLong("2000"),
+      quantity: new NumberInt("2")
+    },
+    {
+      product_id: 2,
+      price: new NumberLong("2000"),
+      quantity: new NumberInt("2")
+    }
+  ]
+});
+</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="sec-query-doc" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Query Document</h2>
+                    <p class="mb-6 text-gray-600">Inti dari database adalah mengambil data. Bagian ini sangat luas, mencakup segala hal mulai dari kueri kesetaraan sederhana, operator perbandingan (`$gt`, `$in`), operator logis (`$and`, `$not`), hingga kueri yang lebih canggih untuk elemen, array, dan penggunaan operator proyeksi untuk membentuk data yang dikembalikan.</p>
+
+                    <div id="sec-query-js" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">query.js</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// select * from customers where _id = "khannedy"
+db.customers.find({_id: "khannedy"});
+
+// select * from customers where name = "Eko Kurniawan Khannedy"
+db.customers.find({name: "Eko Kurniawan Khannedy"});
+
+// select * from products where price = 2000
+db.products.find({price: 2000});
+
+// select * from orders where items.product_id = 1
+db.orders.find({"items.product_id": 1});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-data-tambahan-query" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Data Tambahan untuk Query</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// insert product documents (untuk comparison query)
+db.products.insertMany([
+  {
+    _id: 3,
+    name: "Pop Mie Rasa Bakso",
+    price: new NumberLong("2500"),
+    category: "food"
+  },
+  {
+    _id: 4,
+    name: "Samsung Galaxy S9+",
+    price: new NumberLong("10000000"),
+    category: "handphone"
+  },
+  {
+    _id: 5,
+    name: "Acer Predator XXI",
+    price: new NumberLong("25000000"),
+    category: "laptop"
+  }
+]);
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-comparison-query" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Comparison Query Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// customer-query.js
+// select * from customers where _id = "khannedy"
+db.customers.find({
+  _id: {
+    $eq: "khannedy"
+  }
+});
+
+// product-query.js
+// select * from products where price > 1000
+db.products.find({
+  price: {
+    $gt: 1000
+  }
+});
+
+// select * from products where category in ('handphone', 'laptop')
+// and price > 5000000
+db.products.find({
+  category: {
+    $in: ["handphone", "laptop"]
+  },
+  price: {
+    $gt: 5000000
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-logical-query" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Logical Query Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// logical-operator.js
+
+// select * from products where category in ('handphone', 'laptop') and price > 20000000
+db.products.find({
+  $and: [
+    {category: {$in: ["handphone", "laptop"]}},
+    {price: {$gt: 20000000}}
+  ]
+});
+
+// select * from products where category not in ('handphone', 'laptop')
+db.products.find({
+  category: {
+    $not: {$in: ["handphone", "laptop"]}
+  }
+});
+
+// select * from products where price between 10000000 and 20000000 and category != 'food'
+db.products.find({
+  price: {
+    $gte: 10000000,
+    $lte: 20000000
+  },
+  category: {
+    $ne: "food"
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-element-query" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Element Query Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// element-operator.js
+
+// select * from products where category is null
+db.products.find({
+  category: {
+    $exists: false
+  }
+});
+
+// select * from products where type(category) = 'string'
+db.products.find({
+  category: {
+    $type: "string"
+  }
+});
+
+// select * from products where type(price) in ('int', 'long')
+db.products.find({
+  price: {
+    $type: ["int", "long"]
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-evaluation-query" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Evaluation Query Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// expr-query.js
+// insert customers documents
+db.customers.insertOne({
+  _id: "joko",
+  name: "joko"
+});
+
+// select * from customers where _id = name
+db.customers.find({
+  $expr: {
+    $eq: ["$_id", "$name"]
+  }
+});
+
+// jsonschema-query.js
+// select * from products where name is not null and category is not null
+db.products.find({
+  $jsonSchema: {
+    required: ["name", "category"]
+  }
+});
+
+// select * from products where name is not null and type(name) = 'string' and type(price) = 'number'
+db.products.find({
+  $jsonSchema: {
+    required: ["name"],
+    properties: {
+      name: {
+        type: "string"
+      },
+      price: {
+        type: "number"
+      }
+    }
+  }
+});
+
+// mod-query.js
+// select * from products where price % 5 = 0
+db.products.find({
+  price: {
+    $mod: [5, 0]
+  }
+});
+
+// select * from products where price % 1000000 = 0
+db.products.find({
+  price: {
+    $mod: [1000000, 0]
+  }
+});
+
+// regex-query.js
+// select * from products where name like "%mie%"
+db.products.find({
+  name: {
+    $regex: /mie/,
+    $options: "i"
+  }
+});
+
+// select * from products where name like "Mie%"
+db.products.find({
+  name: {
+    $regex: /^Mie/
+  }
+});
+
+// where-query.js
+// select * from products where _id = name
+db.customers.find({
+  $where: function() {
+    return this._id == this.name;
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-array-query" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Array Query Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// products.js (insert products with tags)
+db.products.insertMany([
+  {
+    _id: 6,
+    name: "Logitech Wireless Mouse",
+    price: new NumberLong("175000"),
+    category: "laptop",
+    tags: ["logitech", "mouse", "accessories"]
+  },
+  {
+    _id: 7,
+    name: "Cooler Pad Gaming",
+    price: new NumberLong("200000"),
+    category: "laptop",
+    tags: ["cooler", "laptop", "accessories", "fan"]
+  },
+  {
+    _id: 8,
+    name: "Samsung Curved Monitor",
+    price: new NumberLong("1750000"),
+    category: "computer",
+    tags: ["samsung", "monitor", "computer"]
+  }
+]);
+
+// array-query.js
+// select * from products where (tags = "samsung" and tags = "monitor")
+db.products.find({
+  tags: {
+    $all: ["samsung", "monitor"]
+  }
+});
+
+// select * from products where tags in ("samsung", "logitech")
+db.products.find({
+  tags: {
+    $elemMatch: {
+      $in: ["samsung", "logitech"]
+    }
+  }
+});
+
+// select * from products where count(tags) = 3
+db.products.find({
+  tags: {
+    $size: 3
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-projection-op" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Projection Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// projection.js
+// select _id, name, category from products
+db.products.find({}, {
+  name: 1,
+  category: 1
+});
+
+// select _id, name, category, price from products (hide tags)
+db.products.find({}, {
+  tags: 0
+});
+
+// elem-match.js
+// select _id, name, tags[first] from products
+db.products.find({}, {
+  name: 1,
+  tags: {
+    $elemMatch: {
+      $in: ["samsung", "logitech"]
+    }
+  }
+})
+
+// $-operator.js
+// select _id, name, tags[first] from products where tags is not null
+db.products.find({
+  tags: {
+    $exists: true
+  }
+}, {
+  name: 1,
+  "tags.$": 1
+})
+
+// slice-operator.js
+// select _id, name, category, price, tags[0-1] from products where tags is not null
+db.products.find({
+  tags: {
+    $exists: true
+  }
+}, {
+  name: 1,
+  tags: {
+    $slice: 2
+  }
+})
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-query-modifier" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Query Modifier</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// query-modifier.js
+
+// select count(*) from products
+db.products.find({}).count()
+
+// select * from products limit 4
+db.products.find({}).limit(4)
+
+// select * from products offset 2
+db.products.find({}).skip(2)
+
+// select * from products limit 4 offset 2
+db.products.find({}).limit(4).skip(2)
+
+// select * from products order by category asc, name desc
+db.products.find({}).sort({
+  category: 1,
+  name: -1
+})
+</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="sec-update-doc" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Update Document</h2>
+                    <p class="mb-6 text-gray-600">Data tidak statis. Bagian ini merinci cara memodifikasi dokumen yang ada. Pelajari perbedaan antara `updateOne`, `updateMany`, dan `replaceOne`, serta beragam operator pembaruan untuk memodifikasi bidang (`$set`, `$inc`, `$unset`) dan array (`$push`, `$pop`, `$pull`, `$[]`).</p>
+
+                    <div id="sec-update-replace" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Update/Replace Function</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// update-one.js
+// update products set category = "food" where _id = 1
+db.products.updateOne({
+  _id: 1
+}, {
+  $set: {
+    category: "food"
+  }
+});
+
+// update products set category = "food" where _id = 2
+db.products.updateOne({
+  _id: 2
+}, {
+  $set: {
+    category: "food"
+  }
+});
+
+// update-many.js
+// update products set tags = ["food"] where category = "food" and tags is null
+db.products.updateMany({
+  $and: [
+    {
+      category: {
+        $eq: "food"
+      }
+    },
+    {
+      tags: {
+        $exists: false
+      }
+    }
+  ]
+}, {
+  $set: {
+    tags: ["food"]
+  }
+})
+
+// replace-one.js
+// insert wrong document
+db.products.insertOne({
+  _id: 9,
+  name: "Ups Salah",
+  wrong: "Salah Lagi"
+});
+
+// replace document with id 9
+db.products.replaceOne({
+  _id: 9
+}, {
+  name: "Adidas Sepatu Lari Pria",
+  price: new NumberLong("1100000"),
+  category: "shoes",
+  tags: [
+    "adidas", "shoes", "running"
+  ]
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-field-update" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Field Update Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// $set.js
+// update products set stock = 0
+db.products.updateMany({}, {
+  $set: {
+    stock: 0
+  }
+});
+
+// inc.js
+// update products set stock = stock + 10
+db.products.updateMany({}, {
+  $inc: {
+    stock: 10
+  }
+});
+
+// rename.js
+// alter table customers change name full_name
+db.customers.updateMany({}, {
+  $rename: {
+    name: "full_name"
+  }
+});
+
+// unset.js
+// update customers set wrong = 'Ups'
+db.customers.updateMany({}, {
+  $set: {
+    wrong: "Ups"
+  }
+});
+
+// alter table customers drop column wrong
+db.customers.updateMany({}, {
+  $unset: {
+    wrong: ""
+  }
+});
+
+// current-date.js
+// update products set lastModifiedDate = current_date()
+db.products.updateMany({}, {
+  $currentDate: {
+    lastModifiedDate: {
+      $type: "date"
+    }
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-array-update" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Array Update Operator</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// array-$-operator.js
+// update products set ratings = [90, 80, 70]
+db.products.updateMany({}, {
+  $set: {
+    ratings: [90, 80, 70]
+  }
+});
+
+// update first element of array, query must include array fields
+db.products.updateMany({
+  ratings: 90
+}, {
+  $set: {
+    "ratings.$": 100
+  }
+});
+
+// array-$[]-operator.js
+// update all element of array to 100
+db.products.updateMany({}, {
+  $set: {
+    "ratings.$[]": 100
+  }
+})
+
+// array-$[identifier]-operator.js
+// update products set ratings = [90, 80, 70]
+db.products.updateMany({}, {
+  $set: {
+    ratings: [90, 80, 70]
+  }
+});
+
+// update element of array based on arrayFilters
+db.products.updateMany({}, {
+  $set: {
+    "ratings.$[element]": 100
+  }
+}, {
+  arrayFilters: [
+    {
+      element: {
+        $gte: 80
+      }
+    }
+  ]
+})
+
+// array-index-operator.js
+// update element of array with given index
+db.products.updateMany({}, {
+  $set: {
+    "ratings.0": 50,
+    "ratings.1": 60
+  }
+});
+
+// add-to-set.js
+// add "popular" to array if not exists
+db.products.updateOne({
+  _id: 1
+}, {
+  $addToSet: {
+    tags: "popular"
+  }
+});
+
+// pop.js
+// remove first element of array
+db.products.updateOne({
+  _id: 1
+}, {
+  $pop: {
+    ratings: -1
+  }
+});
+
+// remove last element of array
+db.products.updateOne({
+  _id: 2
+}, {
+  $pop: {
+    ratings: 1
+  }
+});
+
+// pull.js
+// update products set rating = [90, 80, 70]
+db.products.updateMany({}, {
+  $set: {
+    ratings: [90, 80, 70]
+  }
+});
+
+// remove all element where ratings >= 80
+db.products.updateMany({}, {
+  $pull: {
+    ratings: {
+      $gte: 80
+    }
+  }
+})
+
+// push.js
+// add 100 to ratings
+db.products.updateMany({}, {
+  $push: {
+    ratings: 100
+  }
+})
+
+// pushAll.js (Catatan: $pushAll sudah deprecated, gunakan $push dengan $each)
+// remove element 100
+db.products.updateMany({}, {
+  $pullAll: {
+    ratings: [100]
+  }
+})
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-array-update-mod" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Array Update Operator Modifier</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// each.js
+// add 100, 200, 300 to ratings
+db.products.updateMany({}, {
+  $push: {
+    ratings: {
+      $each: [100, 200, 300]
+    }
+  }
+})
+
+// add trending, popular to tags
+db.products.updateMany({}, {
+  $addToSet: {
+    tags: {
+      $each: ["trending", "popular"]
+    }
+  }
+})
+
+// position.js
+// add hot in position 1
+db.products.updateMany({}, {
+  $push: {
+    tags: {
+      $each: ["hot"],
+      $position: 1
+    }
+  }
+})
+
+// slice.js
+// add all element, but limit with slice from behind
+db.products.updateMany({}, {
+  $push: {
+    ratings: {
+      $each: [100, 200, 300, 400, 500],
+      $slice: -3
+    }
+  }
+})
+
+// sort.js
+// add all element, and sort desc
+db.products.updateMany({}, {
+  $push: {
+    ratings: {
+      $each: [100, 200, 300, 400, 500],
+      $sort: -1
+    }
+  }
+})
+</code></pre>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="sec-delete-doc" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Delete Document</h2>
+                    <p class="mb-6 text-gray-600">Pelajari cara menghapus dokumen dari collection Anda. Bagian ini mencakup `deleteOne` untuk menghapus satu dokumen yang cocok dan `deleteMany` untuk menghapus semua dokumen yang cocok dengan kriteria filter.</p>
+                    <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                        <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                        <pre class="p-4"><code class="language-js">// delete-one.js
+// Insert spammer document
+db.customers.insertOne({
+  _id: "spammer",
+  full_name: "Spammer"
+});
+
+// Delete document by _id
+db.customers.deleteOne({
+  _id: "spammer"
+});
+
+// delete-many.js
+// Insert many spammer documents
+db.customers.insertMany([
+  {
+    _id: "spammer1",
+    full_name: "Spammer1"
+  },
+  {
+    _id: "spammer2",
+    full_name: "Spammer2"
+  },
+  {
+    _id: "spammer3",
+    full_name: "Spammer3"
+  }
+]);
+
+// Delete many documents
+db.customers.deleteMany({
+  _id: {
+    $regex: "spammer"
+  }
+});
+</code></pre>
+                    </div>
+                </section>
+
+                <section id="sec-bulk-write" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Bulk Write Operation</h2>
+                    <p class="mb-6 text-gray-600">Untuk efisiensi, Anda dapat menggabungkan beberapa operasi tulis (sisip, perbarui, hapus) ke dalam satu permintaan menggunakan `bulkWrite`. Ini mengurangi lalu lintas jaringan dan meningkatkan kinerja untuk operasi batch.</p>
+                    <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                        <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                        <pre class="p-4"><code class="language-js">// bulk-write.js
+db.customers.bulkWrite([
+  {
+    insertOne: {
+      document: {
+        _id: "eko",
+        full_name: "Eko"
+      }
+    }
+  },
+  {
+    insertOne: {
+      document: {
+        _id: "kurniawan",
+        full_name: "Kurniawan"
+      }
+    }
+  },
+  {
+    updateMany: {
+      filter: {
+        _id: {
+          $in: ["eko", "kurniawan", "khannedy"]
+        }
+      },
+      update: {
+        $set: {
+          full_name: "Eko Kurniawan Khannedy"
+        }
+      }
+    }
+  }
+]);
+</code></pre>
+                    </div>
+                </section>
+
+                <section id="sec-indexes" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Indexes</h2>
+                    <p class="mb-6 text-gray-600">Indeks sangat penting untuk kinerja kueri. Bagian ini menjelaskan berbagai jenis indeks: `single` (bidang tunggal), `compound` (beberapa bidang), `text` (untuk pencarian teks), dan `wildcard` (untuk bidang dinamis). Ini juga mencakup properti indeks penting seperti `TTL` (Time-To-Live), `unique`, dan `partial`.</p>
+
+                    <div id="sec-single-compound-idx" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Single & Compound Index</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// single-index.js
+// Create index at category in products collection
+db.products.createIndex({
+  category: 1
+});
+
+// Get all indexes in products collection
+db.products.getIndexes();
+
+// Find products by category (will use index)
+db.products.find({
+  category: "food"
+});
+
+// debug-single-index.js
+// debugging with index
+db.products.find({
+  category: "food"
+}).explain();
+
+db.products.find({}).sort({
+  category: 1
+}).explain();
+
+// debugging without index
+db.products.find({
+  "tags": "laptop"
+}).explain();
+
+// compound-index.js
+// Create index at price and tags in products collection
+db.products.createIndex({
+  stock: 1,
+  tags: 1
+});
+
+// Find products by stock and tags (will use index)
+db.products.find({
+  stock: 10,
+  tags: "popular"
+});
+
+// debug-compound-index.js
+// debug with index
+db.products.find({
+  stock: 10
+}).explain();
+
+db.products.find({
+  stock: 10,
+  tags: "popular"
+}).explain();
+
+// debug without index
+db.products.find({
+  tags: "popular"
+}).explain();
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-text-idx" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Text Index</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// text-index.js
+// create index text
+db.products.createIndex({
+  name: "text",
+  category: "text",
+  tags: "text"
+}, {
+  weights: {
+    name: 10,
+    category: 5,
+    tags: 1
+  }
+});
+
+// get index
+db.products.getIndexes();
+
+// search.js
+// search products with text "mie"
+db.products.find({
+  $text: {
+    $search: "mie"
+  }
+});
+
+// search products with text "mie" or "laptop"
+db.products.find({
+  $text: {
+    $search: "mie laptop"
+  }
+});
+
+// search products with text "mie sedap"
+db.products.find({
+  $text: {
+    $search: '"mie sedap"'
+  }
+});
+
+// search products with text "mie" and NOT "sedap"
+db.products.find({
+  $text: {
+    $search: "mie -sedap"
+  }
+});
+
+// debug.js
+// Debugging query optimization
+db.products.find({
+  $text: {
+    $search: "mie -sedap"
+  }
+}).explain();
+
+// meta.js
+db.products.find({
+  $text: {
+    $search: "mie"
+  }
+}, {
+  searchScore: {
+    $meta: "textScore"
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-wildcard-idx" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Wildcard Index</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// wildcard-index.js
+// membuat wildcard index
+db.customers.createIndex({
+  "customFields.$**": 1
+});
+
+// mengambil index
+db.customers.getIndexes()
+
+// insert.js
+// Insert many customers
+db.customers.insertMany([
+  {
+    _id: "budi",
+    full_name: "Budi",
+    customFields: {
+      hobby: "Gaming",
+      university: "Universitas Belum Ada"
+    }
+  },
+  {
+    _id: "rully",
+    full_name: "Rully",
+    customFields: {
+      ipk: 3.2,
+      university: "Universitas Belum Ada"
+    }
+  },
+  {
+    _id: "rudi",
+    full_name: "Rudi",
+    customFields: {
+      motherName: "Tini",
+      passion: "Enterpreneur"
+    }
+  }
+]);
+
+// debug.js
+// Debug wildcard index
+db.customers.find({
+  "customFields.passion": "Enterpreneur"
+}).explain();
+
+db.customers.find({
+  "customFields.ipk": 3.2
+}).explain();
+
+db.customers.find({
+  "customFields.hobby": "Gaming"
+}).explain();
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-index-props" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Index Properties</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// ttl.js
+// Create session collection
+db.createCollection("sessions");
+
+// create TTL index
+db.sessions.createIndex({
+  createdAt: 1
+}, {
+  expireAfterSeconds: 10
+});
+
+// Will expire after 10 seconds, but background job run every 60 seconds
+db.sessions.insertOne({
+  _id: 1,
+  session: "Session 1",
+  createdAt: new Date()
+});
+
+// unique.js
+// Create unique index in email
+db.customers.createIndex({
+  email: 1
+}, {
+  unique: true,
+  sparse: true
+});
+
+// update-email.js
+// update customers set email = ? where _id = ?
+db.customers.updateOne({
+  _id: "eko"
+}, {
+  $set: {
+    email: "eko@example.com"
+  }
+});
+
+// error duplicate email
+db.customers.updateOne({
+  _id: "joko"
+}, {
+  $set: {
+    email: "eko@example.com"
+  }
+});
+
+// case-insensitive.js
+// Create unique index in full_name
+db.customers.createIndex({
+  full_name: 1
+}, {
+  collation: {
+    locale: "en",
+    strength: 2
+  }
+});
+
+// debug.js
+// not using index
+db.customers.find({
+  full_name: "Eko Kurniawan Khannedy"
+});
+
+// using index
+db.customers.find({
+  full_name: "EKO KURNIAWAN KHANNEDY"
+}).collation({
+  locale: "en",
+  strength: 2
+});
+
+// partial-index.js
+// create partial index
+db.products.createIndex({
+  price: 1
+}, {
+  partialFilterExpression: {
+    stock: {
+      $gt: 0
+    }
+  }
+});
+
+// debug.js
+// debug query with partial index
+db.products.find({
+  price: {
+    $gt: 1000
+  }
+}).explain();
+
+db.products.find({
+  price: {
+    $gt: 1000
+  },
+  stock: {
+    $gt: 0
+  }
+}).explain();
+</code></pre>
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="sec-security" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Security (User & Role Management)</h2>
+                    <p class="mb-6 text-gray-600">Mengamankan database Anda sangat penting. Bagian ini memandu Anda membuat pengguna admin, mengelola pengguna (membuat, mengubah, menghapus), dan menentukan peran khusus dengan hak istimewa terperinci untuk mengontrol akses ke data Anda.</p>
+                    
+                    <div id="sec-admin-user" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Admin User</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// admin.js
+// switch to database admin
+use admin;
+
+// create admin user
+db.createUser({
+  user: "mongo",
+  pwd: "mongo",
+  roles: [
+    "userAdminAnyDatabase",
+    "readWriteAnyDatabase"
+  ]
+});
+</code></pre>
+                        </div>
+                    </div>
+
+                    <div id="sec-user-mgmt" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">User Management</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// user.js
+use admin;
+
+// Create user with access read only
+db.createUser({
+  user: "contoh",
+  pwd: "contoh",
+  roles: [
+    { role: "read", db: "test" }
+  ]
+});
+
+// Create user with access read write
+db.createUser({
+  user: "contoh2",
+  pwd: "contoh2",
+  roles: [
+    { role: "readWrite", db: "test" }
+  ]
+});
+
+// change-user.js
+// Get all users
+db.getUsers()
+
+// Change password for user contoh
+db.changeUserPassword("contoh", "rahasia")
+
+// drop user contoh
+db.dropUser("contoh")
+
+// Update user
+db.updateUser("contoh2", {
+  roles: [
+    { role: "readWrite", db: "test" },
+    { role: "readWrite", db: "belajar" }
+  ]
+});
+</code></pre>
+                        </div>
+                    </div>
+                    
+                    <div id="sec-role-mgmt" class="mb-8 scroll-mt-20">
+                        <h3 class="text-2xl font-semibold mb-4">Role Management</h3>
+                        <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                            <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                            <pre class="p-4"><code class="language-js">// role.js
+// create role with custom privileges
+db.createRole({
+  role: "session_management",
+  privileges: [
+    {
+      resource: {
+        db: "belajar",
+        collection: "sessions"
+      },
+      actions: [ "insert" ]
+    }
+  ],
+  roles: [
+    {
+      role: "read",
+      db: "belajar"
+    }
+  ]
+});
+
+// show all roles with privileges
+db.getRoles({showPrivileges:true});
+
+// user.js
+// create user with custom role
+db.createUser({
+  user: "eko",
+  pwd: "eko",
+  roles: [ "session_management" ]
+});
+
+// test.js
+// login using user eko
+// find sessions (success)
+db.sessions.find();
+
+// insert session (success)
+db.sessions.insertOne({
+  _id: "test",
+  name: "test"
+});
+
+// delete session (error)
+db.sessions.deleteOne({
+  _id: "test"
+});
+
+// update session (error)
+db.sessions.updateOne({
+  _id: "test"
+}, {
+  $set: {
+    name: "ubah"
+  }
+});
+</code></pre>
+                        </div>
+                    </div>
+                </section>
+                
+                <section id="sec-backup-restore" class="mb-12 scroll-mt-20">
+                    <h2 class="text-3xl font-bold border-b-2 border-indigo-200 pb-2 mb-6">Backup & Restore (Bash)</h2>
+                    <p class="mb-6 text-gray-600">Bagian terakhir ini (ditujukan untuk terminal Bash) menunjukkan alat baris perintah untuk mencadangkan dan memulihkan database Anda. `mongodump` dan `mongorestore` bekerja dengan data biner (BSON), sementara `mongoexport` dan `mongoimport` bekerja dengan format JSON/CSV.</p>
+                    <div class="code-container relative bg-gray-100 rounded-lg font-mono text-sm overflow-x-auto">
+                        <button class="copy-btn absolute top-2 right-2 bg-gray-200 hover:bg-gray-300 text-gray-700 text-xs font-semibold py-1 px-3 rounded-md transition">Salin</button>
+                        <pre class="p-4"><code class="language-bash"># Backup Menggunakan mongodump
+bin/mongodump --uri="mongodb://mongo:mongo@localhost:27017/belajar?authSource=admin" --out=backup-dump
+
+# Backup Menggunakan mongoexport
+bin/mongoexport --uri="mongodb://mongo:mongo@localhost:27017/belajar?authSource=admin"  --collection=customers --out=customers.json
+
+# Restore Menggunakan mongorestore
+bin/mongorestore --uri="mongodb://mongo:mongo@localhost:27017/belajar_restore?authSource=admin" --dir=backup-dump/belajar
+
+# Restore Menggunakan mongoimport
+bin/mongoimport --uri="mongodb://mongo:mongo@localhost:27017/belajar_import?authSource=admin"  --collection=customers --file=customers.json
+</code></pre>
+                    </div>
+                </section>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Overlay untuk mobile -->
+    <div id="sidebar-overlay" class="fixed inset-0 bg-black bg-opacity-50 z-10 hidden md:hidden" aria-hidden="true"></div>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const sidebar = document.getElementById('sidebar');
+            const sidebarOverlay = document.getElementById('sidebar-overlay');
+            const menuToggle = document.getElementById('menu-toggle');
+            const content = document.getElementById('content');
+            const searchInput = document.getElementById('search-input');
+            const navList = document.getElementById('nav-list');
+            const navLinks = navList.querySelectorAll('a');
+            const navL1Items = navList.querySelectorAll('.nav-link-l1');
+            const navL2Items = navList.querySelectorAll('.nav-link-l2');
+            const copyButtons = document.querySelectorAll('.copy-btn');
+
+            let originalContentState = new Map();
+
+            function storeOriginalState() {
+                content.querySelectorAll('h2, h3, p, code').forEach((el, i) => {
+                    originalContentState.set(el, el.innerHTML);
+                });
+            }
+            
+            function restoreOriginalState() {
+                originalContentState.forEach((html, el) => {
+                    el.innerHTML = html;
+                });
+            }
+
+            function highlightText(query) {
+                restoreOriginalState();
+                if (query.trim() === '') {
+                    return;
+                }
+
+                const regex = new RegExp(`(${query.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&')})`, 'gi');
+                
+                originalContentState.forEach((html, el) => {
+                    if (el.children.length === 0 || el.tagName === 'CODE') {
+                        const newHtml = html.replace(regex, '<mark class="highlight">$1</mark>');
+                        if (newHtml !== html) {
+                            el.innerHTML = newHtml;
+                        }
+                    }
+                });
+            }
+
+            function filterSidebar(query) {
+                let hasVisibleChildren = false;
+
+                navLinks.forEach(link => {
+                    const linkText = link.textContent.toLowerCase();
+                    const parentLi = link.closest('li');
+                    
+                    if (linkText.includes(query)) {
+                        parentLi.style.display = 'block';
+                        if (link.classList.contains('nav-link-l2')) {
+                            parentLi.closest('li').style.display = 'block';
+                            hasVisibleChildren = true;
+                        }
+                    } else {
+                        parentLi.style.display = 'none';
+                    }
+                });
+
+                navL1Items.forEach(l1Link => {
+                    const parentLi = l1Link.closest('li');
+                    const childUl = parentLi.querySelector('ul');
+                    if (childUl) {
+                        let hasVisibleChild = false;
+                        childUl.querySelectorAll('li').forEach(childLi => {
+                            if (childLi.style.display === 'block') {
+                                hasVisibleChild = true;
+                            }
+                        });
+                        if (hasVisibleChild) {
+                            parentLi.style.display = 'block';
+                        } else if (!l1Link.textContent.toLowerCase().includes(query)) {
+                            parentLi.style.display = 'none';
+                        }
+                    }
+                });
+            }
+
+            function toggleSidebar() {
+                sidebar.classList.toggle('-translate-x-full');
+                sidebarOverlay.classList.toggle('hidden');
+            }
+
+            menuToggle.addEventListener('click', toggleSidebar);
+            sidebarOverlay.addEventListener('click', toggleSidebar);
+
+            searchInput.addEventListener('input', (e) => {
+                const query = e.target.value.toLowerCase();
+                filterSidebar(query);
+                highlightText(query);
+            });
+
+            navLinks.forEach(link => {
+                link.addEventListener('click', (e) => {
+                    e.preventDefault();
+                    const targetId = link.getAttribute('data-target');
+                    const targetElement = document.getElementById(targetId);
+                    if (targetElement) {
+                        targetElement.scrollIntoView({
+                            behavior: 'smooth',
+                            block: 'start'
+                        });
+                    }
+                    if (window.innerWidth < 768) {
+                        toggleSidebar();
+                    }
+                });
+            });
+
+            copyButtons.forEach(button => {
+                button.addEventListener('click', () => {
+                    const codeContainer = button.closest('.code-container');
+                    const codeElement = codeContainer.querySelector('pre');
+                    const textToCopy = codeElement.innerText;
+
+                    const tempTextarea = document.createElement('textarea');
+                    tempTextarea.value = textToCopy;
+                    document.body.appendChild(tempTextarea);
+                    tempTextarea.select();
+                    tempTextarea.setSelectionRange(0, 99999);
+                    
+                    try {
+                        document.execCommand('copy');
+                        button.textContent = 'Disalin!';
+                        button.classList.add('bg-green-200', 'text-green-800');
+                        setTimeout(() => {
+                            button.textContent = 'Salin';
+                            button.classList.remove('bg-green-200', 'text-green-800');
+                        }, 2000);
+                    } catch (err) {
+                        console.error('Gagal menyalin: ', err);
+                        button.textContent = 'Gagal!';
+                        button.classList.add('bg-red-200', 'text-red-800');
+                         setTimeout(() => {
+                            button.textContent = 'Salin';
+                            button.classList.remove('bg-red-200', 'text-red-800');
+                        }, 2000);
+                    }
+                    
+                    document.body.removeChild(tempTextarea);
+                });
+            });
+            
+            storeOriginalState();
+        });
+    </script>
+</body>
+</html>
